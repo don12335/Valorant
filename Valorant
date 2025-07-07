@@ -1,0 +1,104 @@
+import { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Pie } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+
+ChartJS.register(ArcElement, Tooltip, Legend);
+
+export default function ValorantStats() {
+  const [playerID, setPlayerID] = useState('');
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+
+  const fetchStats = async () => {
+    setError('');
+    setData(null);
+    const [name, tag] = playerID.split('#');
+    if (!name || !tag) {
+      setError('請輸入正確的 Riot ID，例如 Don#1234');
+      return;
+    }
+
+    try {
+      const res = await fetch(`https://api.valapi.io/v1/profile/${name}/${tag}`);
+      if (!res.ok) throw new Error('找不到玩家資料');
+      const result = await res.json();
+      setData(result);
+    } catch (err) {
+      setError('查詢失敗，請確認 ID 是否正確，或稍後再試');
+    }
+  };
+
+  const getAgentChartData = () => {
+    if (!data?.characters) return null;
+    const agents = Object.entries(data.characters).sort((a, b) => b[1].playtime - a[1].playtime);
+    const labels = agents.map(([name]) => name);
+    const values = agents.map(([, info]) => info.playtime);
+
+    return {
+      labels,
+      datasets: [
+        {
+          data: values,
+          backgroundColor: ['#60a5fa', '#f87171', '#fbbf24', '#34d399', '#a78bfa', '#f472b6'],
+        },
+      ],
+    };
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-4">Valorant 玩家數據分析</h1>
+      <div className="flex gap-2 mb-4">
+        <Input
+          placeholder="輸入 Riot ID（如 Don#1234）"
+          value={playerID}
+          onChange={(e) => setPlayerID(e.target.value)}
+        />
+        <Button onClick={fetchStats}>查詢</Button>
+      </div>
+      {error && <p className="text-red-500 mb-4">{error}</p>}
+
+      {data && (
+        <Card className="p-4">
+          <CardContent>
+            <div className="flex items-center gap-4">
+              <img src={data.card.small} alt="Player Card" className="w-16 h-16 rounded" />
+              <div>
+                <h2 className="text-xl font-semibold">{data.name}#{data.tag}</h2>
+                <p className="text-sm text-gray-500">段位：{data.rank || '未知'}</p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex gap-8">
+              <div>
+                <h4 className="font-semibold">勝率</h4>
+                <p>{data.winRate ? `${data.winRate.toFixed(1)}%` : '無資料'}</p>
+              </div>
+              <div>
+                <h4 className="font-semibold">KDA</h4>
+                <p>{data.kda || '無資料'}</p>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <h3 className="font-semibold mb-1">常用角色（根據實際資料）</h3>
+              {getAgentChartData() ? (
+                <Pie data={getAgentChartData()} />
+              ) : (
+                <p className="text-sm text-gray-500">無角色資料</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
