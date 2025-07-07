@@ -1,6 +1,3 @@
-// 使用 React + Tailwind + fetch API
-// 串接非官方 Valorant API（https://valapi.io）
-
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
